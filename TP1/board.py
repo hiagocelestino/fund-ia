@@ -1,6 +1,4 @@
 from __future__ import annotations
-from collections import defaultdict
-import copy
 from typing import List
 
 
@@ -9,19 +7,19 @@ class Board:
         self.size = len(config_board[0])
         self.configuration = config_board
         self.blank_position = self.find_blank_position()
-        self.for_comparation = tuple(tuple(row) for row in self.configuration)
+        self.for_comparation = self.get_str_config(config_board)
 
     def __hash__(self):
         return hash(tuple(tuple(linha) for linha in self.configuration))
 
     def __repr__(self):
-        repr = ""
+        repr = "\n"
         for i in range(self.size):
             repr += "|"
             for j in range(self.size):
                 element = self.configuration[i][j]
                 if element is None:
-                    repr += " X"
+                    repr += " x"
                     continue
                 repr += f" {element}"
             repr += " |\n"
@@ -35,7 +33,19 @@ class Board:
     
     def __lt__(self, other: Board):
         return self.blank_position[0] < other.blank_position[0]
-    
+
+    def get_str_config(self, config: List[List[int]]) -> str:
+        str_config = ''
+        for i in range(self.size):
+            for j in range(self.size):
+                value = config[i][j]
+                if value is None:
+                    str_config += 'x'
+                    continue
+                str_config += f'{value}'
+
+        return str_config
+
     def find_blank_position(self):
         for i in range(self.size):
             for j in range(self.size):

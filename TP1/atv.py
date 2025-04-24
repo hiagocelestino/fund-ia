@@ -3,6 +3,7 @@ from datetime import datetime
 import random
 from typing import List, Tuple
 from board import Board
+from gif import generate_gif
 from search import a_star, bfs, dfs
 
 import cProfile
@@ -38,19 +39,8 @@ def generate_solution(size: int):
     solution[-1][-1] = None
     return solution
 
-
-# config = [
-#     [6, 14, 10, None],
-#     [5, 12, 3, 13],
-#     [9, 8, 11, 1],
-#     [2, 7, 15, 4]
-# ]
-size = 3
-solution = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, None]
-]
+size = 4
+solution = generate_solution(size)
 
 board = None
 while board is None:
@@ -60,12 +50,6 @@ while board is None:
     if board_try.has_solution():
         board = board_try
 
-board = [[5, 6, 7],
- [4, None, 8],
- [3, 2, 1]]
-
-board = Board(board)
-
 board_solution = Board(solution)
 start = datetime.now()
 
@@ -73,14 +57,21 @@ start = datetime.now()
 # _lambda, _pi, found_solution = dfs(board, board_solution)
 _lambda, _pi, found_solution, num_visited = a_star(board, board_solution)
 print(f"Time: {(datetime.now() - start)}s")
-# print(f"Nums walked: {num_visited}")
+print(f"Nums walked: {num_visited}")
 
-node = found_solution
-
-print('-------------SOLUTION----------------')
-print(node)
+# node = found_solution
+# print('-------------SOLUTION----------------')
+# print(node)
 print('-------------WALKED----------------')
-# while node is not None:
-#     print(node)
-#     node = _pi[node]
 
+walked = []
+next = found_solution
+while next:
+    value = _pi[next.for_comparation]
+    if value:
+        walked.append(value.__str__())
+    next = value
+walked.insert(0, found_solution.__str__())
+walked.insert(0, "XXXX")
+
+# generate_gif(reversed(walked))
