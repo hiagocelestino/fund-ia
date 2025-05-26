@@ -1,91 +1,103 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Parâmetros do algoritmo
-POP_SIZE = 100  # Tamanho da população
-NUM_GENERATIONS = 200  # Número de gerações
-CROSSOVER_PROB = 0.8  # Probabilidade de cruzamento
-MUTATION_PROB = 0.1  # Probabilidade de mutação
-SIGMA = 0.5  # Desvio padrão da mutação gaussiana
-BOUNDS = [-5, 5]  # Limites das variáveis
-NUM_VARS = 10  # Número de variáveis (x1, ..., x10)
 
-# Função objetivo
+POP_SIZE = 100
+NUM_VARS = 10
+BOUNDS = [-5, 5]
+CROSSOVER_PROB = 0.8
+MUTATION_PROB = 0.1
+SIGMA = 0.5
+NUM_GENERATIONS = 200
+
 def obj_fun(x):
     return np.sum(x**2)
 
-# Inicialização da população
 def initialize_population():
     return np.random.uniform(BOUNDS[0], BOUNDS[1], (POP_SIZE, NUM_VARS))
 
-# Seleção por torneio
 def tournament_selection(population, fitness, tournament_size=3):
     indices = np.random.choice(len(population), tournament_size)
-    tournament_fitness = fitness[indices]
-    return population[indices[np.argmin(tournament_fitness)]]
+    return population[indices[np.argmin(fitness[indices])]]
 
-# Cruzamento de ponto único
-def crossover(parent1, parent2):
-    if np.random.rand() < CROSSOVER_PROB:
+def crossover(parent1, parent2, crossover_prob):
+    if np.random.rand() < crossover_prob:
         point = np.random.randint(1, NUM_VARS)
-        child1 = np.concatenate((parent1[:point], parent2[point:]))
-        child2 = np.concatenate((parent2[:point], parent1[point:]))
-        return child1, child2
+        return (
+            np.concatenate((parent1[:point], parent2[point:])),
+            np.concatenate((parent2[:point], parent1[point:]))
+        )
     return parent1.copy(), parent2.copy()
 
-# Mutação gaussiana
-def mutate(individual):
+def mutate(individual, mutation_prob, sigma):
     for i in range(len(individual)):
-        if np.random.rand() < MUTATION_PROB:
-            individual[i] += np.random.normal(0, SIGMA)
+        if np.random.rand() < mutation_prob:
+            individual[i] += np.random.normal(0, sigma)
             individual[i] = np.clip(individual[i], BOUNDS[0], BOUNDS[1])
     return individual
 
-# Algoritmo genético
-def genetic_algorithm():
-    # Inicialização
+def genetic_algorithm(num_generations, crossover_prob, mutation_prob, sigma):
     population = initialize_population()
-    best_individual = None
     best_fitness = float('inf')
+    best_individual = None
     
-    for generation in range(NUM_GENERATIONS):
-        # Avaliação
+    for _ in range(num_generations):
         fitness = np.array([obj_fun(ind) for ind in population])
+        min_idx = np.argmin(fitness)
+        if fitness[min_idx] < best_fitness:
+            best_fitness = fitness[min_idx]
+            best_individual = population[min_idx].copy()
         
-        # Atualizar melhor solução
-        min_fitness_idx = np.argmin(fitness)
-        if fitness[min_fitness_idx] < best_fitness:
-            best_fitness = fitness[min_fitness_idx]
-            best_individual = population[min_fitness_idx].copy()
+        new_population = [best_individual]  # elitismo
         
-        # Nova população
-        new_population = []
-        new_population.append(best_individual)  # Elitismo
-        
-        # Gerar novos indivíduos
         while len(new_population) < POP_SIZE:
-            # Seleção
-            parent1 = tournament_selection(population, fitness)
-            parent2 = tournament_selection(population, fitness)
-            
-            # Cruzamento
-            child1, child2 = crossover(parent1, parent2)
-            
-            # Mutação
-            child1 = mutate(child1)
-            child2 = mutate(child2)
-            
-            new_population.extend([child1, child2])
+            p1 = tournament_selection(population, fitness)
+            p2 = tournament_selection(population, fitness)
+            c1, c2 = crossover(p1, p2, crossover_prob)
+            new_population.append(mutate(c1, mutation_prob, sigma))
+            if len(new_population) < POP_SIZE:
+                new_population.append(mutate(c2, mutation_prob, sigma))
         
-        # Atualizar população
         population = np.array(new_population[:POP_SIZE])
-        
-        # Imprimir progresso
-        if generation % 50 == 0:
-            print(f"Geração {generation}: Melhor aptidão = {best_fitness}")
     
-    return best_individual, best_fitness
+    return best_fitness
 
-# Executar o algoritmo
-best_solution, best_fitness = genetic_algorithm()
-print("\nMelhor solução encontrada:", best_solution)
-print("Valor da função objetivo:", best_fitness)
+def test_parameter(param_name, values, base_params):
+    results = []
+    for val in values:
+        params = base_params.copy()
+        params[param_name] = val
+        fitness = genetic_algorithm(
+            num_generations=params['NUM_GENERATIONS'],
+            crossover_prob=params['CROSSOVER_PROB'],
+            mutation_prob=params['MUTATION_PROB'],
+            sigma=params['SIGMA']
+        )
+        results.append(fitness)
+        print(f"{param_name}={val}: fitness={fitness:.4f}")
+    return results
+
+# Parâmetros base fixos
+base_params = {
+    'NUM_GENERATIONS': 200,
+    'CROSSOVER_PROB': 0.8,
+    'MUTATION_PROB': 0.1,
+    'SIGMA': 0.5
+}
+
+def plot_single_param(title, param_name, values):
+    results = test_parameter(param_name, values, base_params)
+    plt.figure(figsize=(8, 5))
+    plt.plot(values, results, marker='o', linestyle='-')
+    plt.title(f"Efeito de {param_name} na melhor aptidão")
+    plt.xlabel(param_name)
+    plt.ylabel("Melhor aptidão")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+# Gerar gráficos separados
+plot_single_param("Número de Gerações", "NUM_GENERATIONS", [50, 100, 200, 400])
+plot_single_param("Probabilidade de Crossover", "CROSSOVER_PROB", [0.2, 0.5, 0.8, 1.0])
+plot_single_param("Probabilidade de Mutação", "MUTATION_PROB", [0.01, 0.05, 0.1, 0.2])
+plot_single_param("Sigma da Mutação", "SIGMA", [0.1, 0.3, 0.5, 1.0])
